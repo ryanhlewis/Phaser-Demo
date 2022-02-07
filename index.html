@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8"/>
+    <title>Demo Phaser Game</title>
+    <script src="//cdn.jsdelivr.net/npm/phaser@3.2.1/dist/phaser.js"></script>
+</head>
+
+<body>
+    <script>
+
+class InGame extends Phaser.Scene {
+        
+    
+        constructor() {
+            super('InGame');
+        }
+
+        preload()
+        {
+            this.load.image('background', 'assets/grass.png');
+            this.load.atlas('spritesheet', 'assets/fixedphas.png', 'assets/fixedphas.json');
+
+        }
+        
+        create(data) {
+
+            cursors = this.input.keyboard.createCursorKeys();
+
+            // Groups:
+            // all static objects / colliders
+            var statics = this.physics.add.staticGroup();
+            // all enemies
+            var enemies = this.physics.add.group();
+
+
+            // background
+            let bg = this.add.sprite(0, 0, 'background');
+
+            // change origin to the top-left of the sprite
+            bg.setOrigin(0,0);
+
+            player = this.physics.add.sprite(50,this.sys.game.config.height / 2,'spritesheet','knight_f_idle_anim_f0');
+            player.setScale(3,3);
+            var frameNames = this.anims.generateFrameNames('spritesheet', {
+                     start: 0, end: 3,
+                     prefix: 'knight_f_idle_anim_f'
+            });
+            this.anims.create({ key: 'idle', frames: frameNames, frameRate: 8, repeat: -1 });
+            frameNames = this.anims.generateFrameNames('spritesheet', {
+                     start: 0, end: 3,
+                     prefix: 'knight_f_run_anim_f'
+            });
+            this.anims.create({ key: 'run', frames: frameNames, frameRate: 8, repeat: -1 });
+            
+            player.anims.play('idle');
+            player.setCollideWorldBounds(true);
+
+            princess = statics.create(this.sys.game.config.width / 2,this.sys.game.config.height / 2,'spritesheet','wizzard_f_idle_anim_f1');
+            princess.setScale(3.2,3.2);
+            princess.tint =  0xcccccc;
+
+
+            slime = enemies.create(this.sys.game.config.width / 2 - 200,this.sys.game.config.height / 2 -100,'spritesheet','goblin_run_anim_f0');
+            slime.setScale(3.2,3.2);
+            frameNames = this.anims.generateFrameNames('spritesheet', {
+                     start: 0, end: 3,
+                     prefix: 'goblin_run_anim_f'
+            });
+            this.anims.create({ key: 'goblinRun', frames: frameNames, frameRate: 8, repeat: -1 });
+            slime.anims.play('goblinRun');
+
+            this.physics.add.collider(player, enemies);
+            this.physics.add.collider(player, statics);
+            this.physics.add.collider(princess, enemies, hitPrincess, null, this);
+
+            // UI 
+            var score = 100;
+            var scoreText = this.add.text(16, 16, 'princess health: 100', { fontSize: '32px', fill: '#000' });
+
+
+            async function hitPrincess(bodyA, bodyB) {
+                var xDistance = princess.x-bodyB.x;
+                var yDistance = princess.y-bodyB.y;
+                var hypotenuse = Math.sqrt((xDistance * xDistance) + (yDistance * yDistance));
+
+                
+                var y = -0.8*200*(yDistance/hypotenuse);
+                var x = -0.8*200*(xDistance/hypotenuse);
+
+                bodyB.setVelocityX(x);
+                bodyB.setVelocityY(y);
+                score -= 10;
+                scoreText.setText('princess health: ' + score);
+                bodyB.anims.pause();
+                this.cameras.main.shake(1000,0.005);
+
+
+                await new Promise(r => setTimeout(() => new function() {
+                    bodyB.setVelocityX(0);
+                    bodyB.setVelocityY(0);
+                    bodyB.anims.resume();
+                }, 2000));
+
+                
+            }
+
+        }
+
+
+        update(time,delta) {
+
+            var moving = Boolean(0);
+
+            // Player Movement
+            if (cursors.left.isDown)
+            {
+                player.setVelocityX(-160);
+                player.anims.play('run',true);
+                moving = Boolean(1);
+                player.setFlipX(true);
+            }
+            else if (cursors.right.isDown)
+            {
+                player.setVelocityX(160);
+                player.anims.play('run',true);
+                moving = Boolean(1);
+                player.setFlipX(false);
+
+            }
+            else
+            {
+                moving = Boolean(0);
+                player.setVelocityX(0);
+            }
+
+            if (cursors.up.isDown)
+            {
+                player.setVelocityY(-160);
+                player.anims.play('run',true);
+                moving = Boolean(1);
+
+            } else if(cursors.down.isDown) {
+                player.setVelocityY(160);
+                player.anims.play('run',true);
+                moving = Boolean(1);
+
+            } else
+            {
+                if(!moving) {
+                    player.anims.play('idle',true);
+                }
+                player.setVelocityY(0);
+            }
+
+
+            var xDistance = princess.x-slime.x;
+            var yDistance = princess.y-slime.y;
+            var hypotenuse = Math.sqrt((xDistance * xDistance) + (yDistance * yDistance));
+
+            if(hypotenuse < 400){
+                    slime.y += 0.008*200*(yDistance/hypotenuse);
+                    slime.x += 0.008*200*(xDistance/hypotenuse);
+                    //slime.setGravity(y,x,1);
+                    slime.setCollideWorldBounds(true);
+            }
+
+
+            }
+        }
+
+        class Menu extends Phaser.Scene {
+        
+        constructor() {
+            super('Menu');
+        }
+
+        preload()
+        {
+            this.load.image('background', 'assets/grass.png');
+            this.load.image('play', 'assets/play.png');
+            this.load.image('story', 'assets/story.png');
+            this.load.image('shop', 'assets/shop.png');
+            this.load.image('quit', 'assets/quit.png');
+            this.load.atlas('spritesheet', 'assets/fixedphas.png', 'assets/fixedphas.json');
+        }
+        
+        create(data) {
+            cursors = this.input.keyboard.createCursorKeys();
+            let bg = this.add.sprite(0, 0, 'background');
+            // change origin to the top-left of the sprite
+            bg.setOrigin(0,0);
+
+            //let play = this.add.sprite(this.sys.game.config.width / 2, (this.sys.game.config.height / 2)+100, 'play');
+            // change origin to the top-left of the sprite
+            var ref = this;
+
+            let play = this.add.sprite(this.sys.game.config.width / 2, (this.sys.game.config.height / 2)+100, 'play');
+            play.setScale(0.3,0.3);
+            play.setInteractive();
+
+            play.on('pointerover', () => { 
+                play.tint = Math.random() * 0xffffff;
+                play.setScale(0.31,0.31);
+
+             });
+
+             play.on('pointerout', () => { 
+                play.tint = 0xffffff;
+                play.setScale(0.3,0.3);
+
+             });
+
+            play.on('pointerdown', () => { 
+                play.setScale(0.3,0.3);
+                displayMenu();
+            });
+
+             function displayMenu() {
+
+                play.destroy();
+
+                let story = ref.add.sprite(ref.sys.game.config.width / 2, (ref.sys.game.config.height / 2)-100, 'story');
+                story.setScale(0.3,0.3);
+                story.setInteractive();
+
+                story.on('pointerover', () => { 
+                    story.tint = Math.random() * 0xffffff;
+                    story.setScale(0.31,0.31);
+                });
+
+                story.on('pointerout', () => { 
+                    story.tint = 0xffffff;
+                    story.setScale(0.3,0.3);
+                });
+
+                story.on('pointerdown', () => { 
+                    story.setScale(0.3,0.3);
+                    ref.scene.start('InGame');
+                });
+
+                let shop = ref.add.sprite(ref.sys.game.config.width / 2, (ref.sys.game.config.height / 2), 'shop');
+                shop.setScale(0.3,0.3);
+                shop.setInteractive();
+
+                shop.on('pointerover', () => { 
+                    shop.tint = Math.random() * 0xffffff;
+                    shop.setScale(0.31,0.31);
+                });
+
+                shop.on('pointerout', () => { 
+                    shop.tint = 0xffffff;
+                    shop.setScale(0.3,0.3);
+                });
+
+                shop.on('pointerdown', () => { 
+                    shop.setScale(0.3,0.3);
+                });
+
+                let quit = ref.add.sprite(ref.sys.game.config.width / 2, (ref.sys.game.config.height / 2)+100, 'quit');
+                quit.setScale(0.3,0.3);
+                quit.setInteractive();
+
+                quit.on('pointerover', () => { 
+                    quit.tint = Math.random() * 0xffffff;
+                    quit.setScale(0.31,0.31);
+                });
+
+                quit.on('pointerout', () => { 
+                    quit.tint = 0xffffff;
+                    quit.setScale(0.3,0.3);
+                });
+
+                quit.on('pointerdown', () => { 
+                    quit.setScale(0.3,0.3);
+                    ref.scene.start('Menu');
+                });
+
+             }
+
+            player = this.physics.add.sprite(50,this.sys.game.config.height / 2,'spritesheet','knight_f_idle_anim_f0');
+            player.setScale(2,2);
+            var frameNames = this.anims.generateFrameNames('spritesheet', {
+                     start: 0, end: 3,
+                     prefix: 'knight_f_idle_anim_f'
+            });
+
+        }
+
+
+        update(time,delta) {
+        }
+
+        }
+
+        var config = {
+            type: Phaser.AUTO,
+            width: 640,
+            height: 640,
+            pixelArt: true,
+            physics: {
+                default: 'arcade',
+                arcade: {
+                gravity: { y: 0 }
+                }
+            },
+            scene: [
+                Menu,
+                InGame
+            ]
+        };
+        var game = new Phaser.Game(config);
+        var cursors;
+        var player;
+        var princess;
+        var slime;
+
+    </script>
+</body>
+
+
+</html>
