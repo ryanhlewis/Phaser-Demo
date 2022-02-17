@@ -116,6 +116,12 @@ class InGame extends Phaser.Scene {
                 });
                 ref.anims.create({ key: 'run', frames: frameNames, frameRate: 8, repeat: -1 });
                 
+
+                frameNames = ref.anims.generateFrameNames('swordtrail', {
+                        start: 0, end: 2                
+                });
+                ref.anims.create({ key: 'sword', frames: frameNames, frameRate: 8, repeat: 0 });
+                
             }
         }
         
@@ -181,12 +187,15 @@ class InGame extends Phaser.Scene {
 
 
             function createSlime() {
-            slime = enemies.create(ref.sys.game.config.width / (Math.random()*2) - 200,ref.sys.game.config.height / (Math.random()*2) -100,'spritesheet','goblin_run_anim_f0');
+            slime = enemies.create((Math.round(Math.random()) == 0 ? ref.sys.game.config.width + 30 : -30),(Math.round(Math.random()) == 0 ? ref.sys.game.config.height + 30 : -30),'spritesheet','goblin_run_anim_f0');
             slime.setScale(3.2,3.2);
             slime.anims.play('goblinRun');
             slime.health = 100;
-            slime.setCollideWorldBounds(true);
+            //slime.setCollideWorldBounds(true);
             }
+
+            var spawner = setInterval(createSlime, 5000);
+
 
             createSlime();
             createSlime();
@@ -384,26 +393,40 @@ class InGame extends Phaser.Scene {
 
             id = setInterval(frame, 1);
 
+            // Temporary sword trail
+            let trail = ref.add.sprite(sword.x, sword.y, 'sword');
+            trail.setScale(0.5,0.5);
+            trail.anims.play('sword');
+            if(player.flipX) {
+                trail.setFlipX(true);
+            }
+            // Destroy after anim done
+            //trail.destroy();
+    
             function frame() {
-            if(sword.angle > 180) {
-                    if (sword.angle < 270) {
+            if(player.flipX) {
+                    if(sword.angle < -140) {
                     clearInterval(id);
                     return;
                 } else {
-                    sword.angle-=10; 
+                    sword.angle-=5; 
                 }
             }
-            if (sword.angle > 90) {
+            if (!player.flipX) {
+                    if(sword.angle > 140) {
                     clearInterval(id);
                     return;
                 } else {
-                    sword.angle+=10; 
+                    sword.angle+=5; 
                 }
+            }
             }
 
             await new Promise(r => setTimeout(() => new function() {
                     overrideSword = Boolean(0);
-                }, 1000));
+                    trail.destroy();
+
+                }, 500));
 
             }, this);
 
@@ -432,8 +455,12 @@ class InGame extends Phaser.Scene {
 
             var moving = Boolean(0);
 
-            //sword.x = player.x;
-            //sword.y = player.y;
+            if(player.flipX)
+            sword.x = player.x - 10;
+            else 
+            sword.x = player.x + 10;
+
+            sword.y = player.y + 30;
 
             if(!overrideSword)
             sword.angle = getAngle(sword,this.sys.game.input.activePointer);
@@ -492,7 +519,7 @@ class InGame extends Phaser.Scene {
                     var xDistance = princess.x-enemy.x;
                     var yDistance = princess.y-enemy.y;
                     var hypotenuse = Math.sqrt((xDistance * xDistance) + (yDistance * yDistance));
-                    if(hypotenuse < 400){
+                    if(hypotenuse < 1000){
                     enemy.y += 0.008*200*(yDistance/hypotenuse);
                     enemy.x += 0.008*200*(xDistance/hypotenuse);
                     }
@@ -529,6 +556,8 @@ class InGame extends Phaser.Scene {
                 this.load.image('retry', 'assets/retry.png');
                 this.load.image('background', 'assets/grass.png');
                 this.load.image('resume', 'assets/resume.png');
+                this.load.spritesheet('swordtrail', 'assets/swordtrail.png', { frameWidth: 282, frameHeight: 214 });
+
 
                 console.log(ref);
 
