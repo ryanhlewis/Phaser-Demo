@@ -30,6 +30,8 @@ class PauseMenu extends Phaser.Scene {
         
         create(data) {
 
+            var score = data.score;
+
             var rref = this;
 
             let box = rref.add.sprite((rref.sys.game.config.width / 2), (ref.sys.game.config.height / 2), 'box');
@@ -71,7 +73,7 @@ class PauseMenu extends Phaser.Scene {
 
                 quit.on('pointerdown', () => { 
                     quit.setScale(0.200,0.200);
-                    ref.scene.launch('Menu');
+                    ref.scene.launch('Menu',{ menu: Boolean(1), score: score });
                     ref.scene.bringToTop('Menu');
                     rref.scene.stop();
                 });
@@ -127,6 +129,17 @@ class InGame extends Phaser.Scene {
         
         create(data) {
             
+            var attackLevel = 0;
+            var healthLevel = 0;
+            var coinCount = 0;
+
+            // Grab any data passed in
+            if(data.attackLevel != undefined) {
+                attackLevel = data.attackLevel;
+                healthLevel = data.healthLevel;
+                coinCount = data.coinCount;
+            }
+
             cursors = this.input.keyboard.createCursorKeys();
 
             // Groups:
@@ -178,16 +191,49 @@ class InGame extends Phaser.Scene {
 
             }
 
-            var heart1 = healthbar.create(30,25,'spritesheet','ui_heart_full');
-            heart1.setScale(3.2,3.2);
-            var heart2 = healthbar.create(80,25,'spritesheet','ui_heart_full');
-            heart2.setScale(3.2,3.2);
-            var heart3 = healthbar.create(130,25,'spritesheet','ui_heart_full');
-            heart3.setScale(3.2,3.2);
-
+            // Player starts with 3 hearts.
+            // Each are evenly spaced apart, starting at 30,
+            // with a width of 50. They are accessed by the hearts array.
+            var hearts = Array();
+            function createHeart() {
+                var heart = healthbar.create(30 + (hearts.length*50),25,'spritesheet','ui_heart_full');
+                heart.setScale(3.2,3.2);
+                hearts.push(heart);
+            }
+            for(let i = 0; i < healthLevel+3; i++) {
+                createHeart();
+            }
+            console.log(hearts);
 
             function createSlime() {
-            slime = enemies.create((Math.round(Math.random()) == 0 ? ref.sys.game.config.width + 30 : -30),(Math.round(Math.random()) == 0 ? ref.sys.game.config.height + 30 : -30),'spritesheet','goblin_run_anim_f0');
+            // Random Spawner positions--
+            // Rather than expensive calculations for positions,
+            // or the "spawn and move if bad location" method,
+            // each will simply pass a boolean to decide.
+            
+            // Top, Bottom, or Sides
+            var x = -50;
+            var y = -50;
+            switch((Math.round(Math.random()*4))) {
+                case 0:
+                    // Top
+                    x += Math.random()*(ref.sys.game.config.width+100);
+                    break;
+                case 1:
+                    // Left
+                    y += Math.random()*(ref.sys.game.config.height+100);
+                    break;
+                case 2:
+                    // Bottom
+                    y = ref.sys.game.config.height+50;
+                    x += Math.random()*(ref.sys.game.config.width+100);
+                    break;
+                case 3: 
+                    // Right
+                    x = ref.sys.game.config.width+50;
+                    y += Math.random()*(ref.sys.game.config.height+100)
+            }
+            slime = enemies.create(x,y,'spritesheet','goblin_run_anim_f0');
             slime.setScale(3.2,3.2);
             slime.anims.play('goblinRun');
             slime.health = 100;
@@ -205,15 +251,23 @@ class InGame extends Phaser.Scene {
             createSlime();
 
             function deathScreen() {
+                player.setVelocityX(0);
+                player.setVelocityY(0);
+                player.anims.stop();
+                player.setTexture('spritesheet','knight_f_hit_anim_f0');
+
                 let box = ref.add.sprite((ref.sys.game.config.width / 2), (ref.sys.game.config.height / 2), 'box');
                 box.setScale(0.4,0.4);
-                ref.add.text((ref.sys.game.config.width / 2)-75, (ref.sys.game.config.height / 2)-130, 'YOU', { fontFamily: 'PublicPixel', fontSize:'50px' });
-                ref.add.text((ref.sys.game.config.width / 2)-95, (ref.sys.game.config.height / 2)-80, 'LOST', { fontFamily: 'PublicPixel', fontSize:'50px'  });
-                
+                var you = ref.add.text((ref.sys.game.config.width / 2)-75, (ref.sys.game.config.height / 2)-130, 'YOU', { fontFamily: 'PublicPixel', fontSize:'50px' });
+                var lost = ref.add.text((ref.sys.game.config.width / 2)-95, (ref.sys.game.config.height / 2)-80, 'LOST', { fontFamily: 'PublicPixel', fontSize:'50px'  });
+                you.depth=100;
+                lost.depth=100;
+                box.depth=100;
 
                 let retry = ref.add.sprite(ref.sys.game.config.width / 2, (ref.sys.game.config.height / 2)+30, 'retry');
                 retry.setScale(0.200,0.200);
                 retry.setInteractive();
+                retry.depth=100;
 
                 retry.on('pointerover', () => { 
                     retry.tint = Math.random() * 0xffffff;
@@ -227,13 +281,20 @@ class InGame extends Phaser.Scene {
 
                 retry.on('pointerdown', () => { 
                     retry.setScale(0.200,0.200);
+                    enemies.children['entries'].forEach(enemy => {
+                        enemy.destroy();
+                    });
+                    // Results in mini black screen,
+                    // otherwise, results in Update() non-crashing error
                     ref.scene.stop('InGame');
                     ref.scene.start('InGame');
+                    ref.scene.bringToTop('InGame');
                 });
 
                 let quit = ref.add.sprite(ref.sys.game.config.width / 2, (ref.sys.game.config.height / 2)+100, 'quit');
                 quit.setScale(0.200,0.200);
                 quit.setInteractive();
+                quit.depth=100;
 
                 quit.on('pointerover', () => { 
                     quit.tint = Math.random() * 0xffffff;
@@ -247,7 +308,7 @@ class InGame extends Phaser.Scene {
 
                 quit.on('pointerdown', () => { 
                     quit.setScale(0.200,0.200);
-                    ref.scene.launch('Menu');
+                    ref.scene.launch('Menu', { menu: Boolean(1), score:score, attackLevel:attackLevel,healthLevel:healthLevel });
                     ref.scene.bringToTop('Menu');
                     ref.scene.stop('InGame');
                 });
@@ -266,7 +327,7 @@ class InGame extends Phaser.Scene {
 
             var health = 100;
 
-            var gameEnded = Boolean(0);
+            gameEnded = Boolean(0);
 
             function collectCoin(player,coinBody) {
                         console.log("coin");
@@ -295,28 +356,33 @@ class InGame extends Phaser.Scene {
                 health -= 10;
                 // Since there's really no better way to do this
                 // other than manually--
-                if(health < 85) {
-                    heart3.setTexture('spritesheet','ui_heart_half');
+
+                // 3 hearts - 4 hearts - 5 hearts..
+                // each heart represents a portion of health divided
+                // into two sections, half and empty.
+
+                // First, choose the right heart to act on-
+                var divider = 100/hearts.length;
+                // Need to work this out to work with "bigger health hits".
+                var chosenIndex = Math.floor(hearts.length * ((health+10)/100.0));
+                //console.log(chosenIndex);
+                //console.log(divider);
+                //console.log(((chosenIndex))*divider + (divider/2));
+                //console.log(((chosenIndex))*(divider));
+                if(health < ((chosenIndex))*divider + (divider/2)) {
+                    console.log("set texture 1");
+                    hearts[chosenIndex].setTexture('spritesheet','ui_heart_half');
                 } 
-                if(health < 70) {
-                    heart3.setTexture('spritesheet','ui_heart_empty');
-                }
-                if(health < 50) {
-                    heart2.setTexture('spritesheet','ui_heart_half');
-                }
-                if(health < 30) {
-                    heart2.setTexture('spritesheet','ui_heart_empty');
-                }
-                if(health < 15) {
-                    heart1.setTexture('spritesheet','ui_heart_half');
-                }
-                if(health <= 0) {
-                    heart1.setTexture('spritesheet','ui_heart_empty');
+                if(health <= ((chosenIndex))*(divider)) {
+                    console.log("set texture 2");
+                    hearts[chosenIndex].setTexture('spritesheet','ui_heart_empty');
                 }
 
                 if(health <= 0) {
-                    gameEnded = Boolean(1);
+                    // Ensure the deathScreen isn't called multiple times.
+                    if(!gameEnded)
                     deathScreen();
+                    gameEnded = Boolean(1);
                     return;
                 }
                 bodyB.anims.pause();
@@ -324,7 +390,7 @@ class InGame extends Phaser.Scene {
 
 
                 await new Promise(r => setTimeout(() => new function() {
-                    if(bodyB.health > 0) {
+                    if(bodyB != undefined && bodyB.health > 0) {
                     bodyB.setVelocityX(0);
                     bodyB.setVelocityY(0);
                     bodyB.anims.resume();
@@ -336,11 +402,14 @@ class InGame extends Phaser.Scene {
 
             sword = playerGroup.create(70,(this.sys.game.config.height / 2)+30,'spritesheet','weapon_rusty_sword');
             sword.setScale(3.2,3.2);
+            sword.setOrigin(0.1,0.7);
+
             this.physics.add.collider(sword, enemies, hitEnemies, null, this);
 
             async function hitEnemies(bodyA, bodyB) {
 
                 if(overrideSword) {
+                // Geometry- distance between points
                 var xDistance = bodyA.x-bodyB.x;
                 var yDistance = bodyA.y-bodyB.y;
                 var hypotenuse = Math.sqrt((xDistance * xDistance) + (yDistance * yDistance));
@@ -360,7 +429,6 @@ class InGame extends Phaser.Scene {
                 bodyB.destroy();
                 return;
                 }
-                console.log(bodyB.health);
 
                 bodyB.tint = Math.random() * 0xffffff;
 
@@ -381,6 +449,8 @@ class InGame extends Phaser.Scene {
 
             this.input.on('pointerdown', async function (pointer) {
 
+            if(gameEnded)
+            return;
 
             overrideSword = Boolean(1);
 
@@ -455,6 +525,8 @@ class InGame extends Phaser.Scene {
 
             var moving = Boolean(0);
 
+            if(!gameEnded) {
+
             if(player.flipX)
             sword.x = player.x - 10;
             else 
@@ -514,6 +586,8 @@ class InGame extends Phaser.Scene {
                 playerGroup.setVelocityY(0);
             }
 
+            }
+
 
                 enemies.children['entries'].forEach(enemy => {
                     var xDistance = princess.x-enemy.x;
@@ -557,7 +631,8 @@ class InGame extends Phaser.Scene {
                 this.load.image('background', 'assets/grass.png');
                 this.load.image('resume', 'assets/resume.png');
                 this.load.spritesheet('swordtrail', 'assets/swordtrail.png', { frameWidth: 282, frameHeight: 214 });
-
+                this.load.image('back', 'assets/back.png');
+                this.load.image('logo', 'assets/logo.png');
 
                 console.log(ref);
 
@@ -571,7 +646,7 @@ class InGame extends Phaser.Scene {
                     ref.scene.bringToTop('InGame');
                     ref.scene.resume();
                 } else {
-                    ref.scene.launch('PauseMenu');
+                    ref.scene.launch('PauseMenu', {score:0});
                     ref.scene.bringToTop('PauseMenu');
                     ref.scene.pause();   
                 }
@@ -582,6 +657,20 @@ class InGame extends Phaser.Scene {
         }
         
         create(data) {
+            // This will pass the "Data", that is, the
+            // players coin count and levels back.
+            var coinCount = 0;
+            var attackLevel = 0;
+            var healthLevel = 0;
+
+            var ref = this;
+
+            if(data.score != undefined) {
+                coinCount = data.score;
+                attackLevel = data.attackLevel;
+                healthLevel = data.healthLevel;
+            }
+
             cursors = this.input.keyboard.createCursorKeys();
             let bg = this.add.sprite(0, 0, 'background');
             // change origin to the top-left of the sprite
@@ -589,7 +678,15 @@ class InGame extends Phaser.Scene {
 
             //let play = this.add.sprite(this.sys.game.config.width / 2, (this.sys.game.config.height / 2)+100, 'play');
             // change origin to the top-left of the sprite
-            var ref = this;
+
+            // If player is quitting to menu, and not main menu-
+            if(data.menu != undefined && data.menu) {
+                displayMenu();
+                return;
+            }
+
+            let logo = this.add.sprite(this.sys.game.config.width / 2, (this.sys.game.config.height / 2)-50, 'logo');
+            logo.setScale(0.3,0.3);
 
             let play = this.add.sprite(this.sys.game.config.width / 2, (this.sys.game.config.height / 2)+100, 'play');
             play.setScale(0.3,0.3);
@@ -614,8 +711,10 @@ class InGame extends Phaser.Scene {
 
              function displayMenu() {
 
-                if(play != null)
+                if(data.menu == undefined) {
+                logo.destroy();
                 play.destroy();
+                }
 
                 let story = ref.add.sprite(ref.sys.game.config.width / 2, (ref.sys.game.config.height / 2)-100, 'story');
                 story.setScale(0.3,0.3);
@@ -654,6 +753,10 @@ class InGame extends Phaser.Scene {
 
                 shop.on('pointerdown', () => { 
                     shop.setScale(0.3,0.3);
+                    story.destroy();
+                    shop.destroy();
+                    quit.destroy();
+                    displayShop();
                 });
 
                 let quit = ref.add.sprite(ref.sys.game.config.width / 2, (ref.sys.game.config.height / 2)+100, 'quit');
@@ -676,7 +779,8 @@ class InGame extends Phaser.Scene {
                     ref.scene.start('Menu');
                 });
 
-                let settings = ref.add.sprite(ref.sys.game.config.width-40, (ref.sys.game.config.height-40), 'settings');
+                // Settings Menu- commented out until further notice.
+                /*let settings = ref.add.sprite(ref.sys.game.config.width-40, (ref.sys.game.config.height-40), 'settings');
                 settings.setScale(0.1,0.1);
                 settings.setInteractive();
 
@@ -696,7 +800,86 @@ class InGame extends Phaser.Scene {
                     shop.destroy();
                     quit.destroy();
                     displaySettings();
+                });*/
+
+
+                function displayShop() {
+
+                let box = ref.add.sprite((ref.sys.game.config.width / 2), (ref.sys.game.config.height / 2), 'box');
+                box.setScale(0.4,0.4);
+
+                let chest = ref.add.sprite((ref.sys.game.config.width / 2), (ref.sys.game.config.height / 2)-170, 'spritesheet','chest_empty_open_anim_f0');
+                chest.setScale(7,7);
+
+                var scoreText = ref.add.text((ref.sys.game.config.width/2) - 40, (ref.sys.game.config.height/2) - 130, "" + coinCount, { fontFamily: 'PublicPixel',fontSize: '30px', fill: '#fff',align:'center' });
+
+                var swordLevel = ref.add.text((ref.sys.game.config.width/2) - 110, (ref.sys.game.config.height/2) - 80, "Level " + attackLevel, { fontFamily: 'PublicPixel',fontSize: '12px', fill: '#fff',align:'center' });
+                var heartLevel = ref.add.text((ref.sys.game.config.width/2) + 20, (ref.sys.game.config.height/2) - 80, "Level " + healthLevel, { fontFamily: 'PublicPixel',fontSize: '12px', fill: '#fff',align:'center' });
+
+                var swordCost = ref.add.text((ref.sys.game.config.width/2) - 80, (ref.sys.game.config.height/2) + 30, "" + (attackLevel+1)*100, { fontFamily: 'PublicPixel',fontSize: '15px', fill: '#fff',align:'center' });
+                var heartCost = ref.add.text((ref.sys.game.config.width/2) + 40, (ref.sys.game.config.height/2) + 30, "" + (coinCount+3)*100, { fontFamily: 'PublicPixel',fontSize: '15px', fill: '#fff',align:'center' });
+
+
+                let weapon = ref.add.sprite((ref.sys.game.config.width / 2)-60, (ref.sys.game.config.height / 2)-20, 'spritesheet','weapon_regular_sword');
+                weapon.setScale(4,4);
+                weapon.setInteractive();
+
+                weapon.on('pointerover', () => { 
+                    weapon.tint = Math.random() * 0xffffff;
+                    weapon.setScale(4.3,4.3);
                 });
+
+                weapon.on('pointerout', () => { 
+                    weapon.tint = 0xffffff;
+                    weapon.setScale(4,4);
+                });
+
+                weapon.on('pointerdown', () => { 
+                    weapon.setScale(4,4);
+                });
+
+                let heart = ref.add.sprite((ref.sys.game.config.width / 2)+60, (ref.sys.game.config.height / 2)-20, 'spritesheet','ui_heart_full');
+                heart.setScale(4,4);
+                heart.setInteractive();
+
+                heart.on('pointerover', () => { 
+                    heart.tint = Math.random() * 0xffffff;
+                    heart.setScale(4.3,4.3);
+                });
+
+                heart.on('pointerout', () => { 
+                    heart.tint = 0xffffff;
+                    heart.setScale(4,4);
+                });
+
+                heart.on('pointerdown', () => { 
+                    heart.setScale(4,4);
+                });
+
+
+                let x = ref.add.sprite((ref.sys.game.config.width / 2), (ref.sys.game.config.height / 2)+100, 'back');
+                x.setScale(0.24,0.24);
+                x.setInteractive();
+
+                x.on('pointerover', () => { 
+                    x.tint = Math.random() * 0xffffff;
+                    x.setScale(0.245,0.245);
+                });
+
+                x.on('pointerout', () => { 
+                    x.tint = 0xffffff;
+                    x.setScale(0.24,0.24);
+                });
+
+                x.on('pointerdown', () => { 
+                    x.setScale(0.24,0.24);
+                    x.destroy();
+                    box.destroy();
+                    chest.destroy();
+                    displayMenu();
+                });
+
+                }
 
                 function displaySettings() {
 
@@ -763,6 +946,10 @@ class InGame extends Phaser.Scene {
             ]
         };
         var game = new Phaser.Game(config);
+        // These variables are temporarily global until
+        // I can refactor the code to make them not.
+        // The refactor in mind is just a GameInfo class object
+        // which I can pass easily around the scenes.
         var cursors;
         var player;
         var princess;
@@ -775,6 +962,11 @@ class InGame extends Phaser.Scene {
         var ref;
         var gameStarted = Boolean(0);
         var preloadedGame = Boolean(0);
+        var gameEnded;
+        // If you're looking for the variable I use to pass values
+        // between scenes, it's not in the global variables.
+        // It's already being passed directly between scenes.
+        // CTRL-F "launch"
 
 
     </script>
