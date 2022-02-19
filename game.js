@@ -147,7 +147,7 @@ class InGame extends Phaser.Scene {
         }*/
 
         var health = 100 + 50 * healthLevel;
-        var attack = 3 + 5 * attackLevel;
+        var attack = 3 + 2 * attackLevel;
 
         //cursors = this.input.keyboard.createCursorKeys();
         cursors = this.input.keyboard.addKeys({ up: Phaser.Input.Keyboard.KeyCodes.W, down: Phaser.Input.Keyboard.KeyCodes.S, left: Phaser.Input.Keyboard.KeyCodes.A, right: Phaser.Input.Keyboard.KeyCodes.D });
@@ -269,9 +269,19 @@ class InGame extends Phaser.Scene {
 
         var lastScore = 0;
 
+        // The more you've upgraded yourself in the Shop (attack-wise)
+        // the harder your start will be...... (to keep things engaging)
+        var intervalMax = (attackLevel * 200) > 4500 ? 500 : attackLevel*100;
+
+        // Add all previously levelled enemies---
+        var maxEnemyCount = attackLevel >= EnemyList.length ? EnemyList.Length-1 : attackLevel;
+        for(let x = 1; x <= maxEnemyCount; x++)
+            addEnemy(x, Math.random() * (EnemyList.length - x));
+
+
         // Every five seconds, check player score,
         // and update current enemy list accordingly
-        var intervalTime = 5000;
+        var intervalTime = 5000 - (intervalMax);
         spawnerID = setInterval(updateEnemies, intervalTime);
         //console.log(spawnerID);
 
