@@ -52,15 +52,17 @@ class PauseMenu extends Phaser.Scene {
         quit.on("pointerdown", () => {
             quit.setScale(0.2, 0.2);
             gameEnded = Boolean(1);
-            data.enemies.children["entries"].forEach((enemy) => {
+            enemies.children["entries"].forEach((enemy) => {
                 ref.physics.world.colliders.destroy();
                 enemy.destroy();
             });
             clearInterval(spawnerID);
-            player.destroy();
-            ref.scene.launch("Menu", { menu: Boolean(1), score: data.score, healthLevel: data.healthLevel, attackLevel: data.attackLevel });
+            //player.destroy();
+            var lastScene = ref.scene;
+            ref.scene.launch("Menu" /*, { menu: Boolean(1), score: data.score, healthLevel: data.healthLevel, attackLevel: data.attackLevel }*/);
             ref.scene.bringToTop("Menu");
             rref.scene.stop();
+            lastScene.stop();
         });
     }
 
@@ -129,19 +131,20 @@ class InGame extends Phaser.Scene {
     }
 
     create(data) {
-        var attackLevel = 0;
+        /*var attackLevel = 0;
         var healthLevel = 0;
         var coinCount = 0;
-        var score = 0;
+        var score = 0;*/
 
-        //console.log(data);
+        score = 0;
+        console.log(data);
 
         // Grab any data passed in
-        if (data.attackLevel != undefined) {
+        /*if (data.attackLevel != undefined) {
             attackLevel = data.attackLevel;
             healthLevel = data.healthLevel;
             coinCount = data.score;
-        }
+        }*/
 
         var health = 100 + 50 * healthLevel;
         var attack = 10 + 10 * attackLevel;
@@ -393,10 +396,10 @@ class InGame extends Phaser.Scene {
                     enemy.destroy();
                 });
                 clearInterval(spawnerID);
-                player.destroy();
+                //player.destroy();
                 // Results in mini black screen,
                 // otherwise, results in Update() non-crashing error
-                ref.scene.start("InGame", { score: score + coinCount, attackLevel: attackLevel, healthLevel: healthLevel });
+                ref.scene.start("InGame" /*, { score: (score + coinCount), attackLevel: attackLevel, healthLevel: healthLevel }*/);
                 ref.scene.bringToTop("InGame");
             });
 
@@ -422,10 +425,12 @@ class InGame extends Phaser.Scene {
                     enemy.destroy();
                 });
                 clearInterval(spawnerID);
-                player.destroy();
-                ref.scene.launch("Menu", { menu: Boolean(1), score: score + coinCount, attackLevel: attackLevel, healthLevel: healthLevel });
+                var lastScene = ref.scene;
+                //player.destroy();
+                ref.scene.launch("Menu" /*, { menu: Boolean(1), score: (score + coinCount), attackLevel: attackLevel, healthLevel: healthLevel }*/);
                 ref.scene.bringToTop("Menu");
                 ref.scene.stop("InGame");
+                lastScene.stop();
             });
         }
 
@@ -443,6 +448,8 @@ class InGame extends Phaser.Scene {
         function collectCoin(player, coinBody) {
             //console.log("coin");
             score += 10;
+            coinCount += 10;
+            console.log(score);
             scoreText.setText(score);
             // A trick to right-align.
             scoreText.x = ref.sys.game.config.width - 10 - scoreText.width;
@@ -674,7 +681,7 @@ class InGame extends Phaser.Scene {
                     ref.scene.bringToTop("InGame");
                     ref.scene.resume();
                 } else {
-                    ref.scene.launch("PauseMenu", { score: score + coinCount, attackLevel: attackLevel, healthLevel: healthLevel, enemies: enemies });
+                    ref.scene.launch("PauseMenu" /*, { score: (score + coinCount), attackLevel: attackLevel, healthLevel: healthLevel, enemies: enemies }*/);
                     ref.scene.bringToTop("PauseMenu");
                     ref.scene.pause();
                 }
@@ -801,18 +808,18 @@ class Menu extends Phaser.Scene {
     create(data) {
         // This will pass the "Data", that is, the
         // players coin count and levels back.
-        var coinCount = 0;
+        /*var coinCount = 0;
         var attackLevel = 0;
-        var healthLevel = 0;
+        var healthLevel = 0;*/
 
         var ref = this;
 
-        //console.log(data);
+        /*console.log(data);
         if (data.score != undefined) {
             coinCount = data.score;
             attackLevel = data.attackLevel;
             healthLevel = data.healthLevel;
-        }
+        }*/
 
         cursors = this.input.keyboard.createCursorKeys();
         let bg = this.add.sprite(0, 0, "background");
@@ -823,7 +830,7 @@ class Menu extends Phaser.Scene {
         // change origin to the top-left of the sprite
 
         // If player is quitting to menu, and not main menu-
-        if (data.menu != undefined && data.menu) {
+        if (menu) {
             displayMenu();
             return;
         }
@@ -851,10 +858,12 @@ class Menu extends Phaser.Scene {
         });
 
         function displayMenu() {
-            if (data.menu == undefined) {
+            if (!menu) {
                 logo.destroy();
                 play.destroy();
             }
+
+            menu = Boolean(1);
 
             let story = ref.add.sprite(ref.sys.game.config.width / 2, ref.sys.game.config.height / 2 - 100, "story");
             story.setScale(0.3, 0.3);
@@ -873,7 +882,7 @@ class Menu extends Phaser.Scene {
             story.on("pointerdown", () => {
                 story.setScale(0.3, 0.3);
                 //ref.scene.stop('InGame');
-                ref.scene.launch("InGame", { score: coinCount, attackLevel: attackLevel, healthLevel: healthLevel });
+                ref.scene.launch("InGame" /*, { score: coinCount, attackLevel: attackLevel, healthLevel: healthLevel }*/);
                 ref.scene.bringToTop("InGame");
                 ref.scene.stop("Menu");
             });
@@ -916,7 +925,8 @@ class Menu extends Phaser.Scene {
 
             quit.on("pointerdown", () => {
                 quit.setScale(0.3, 0.3);
-                ref.scene.start("Menu", { score: coinCount, attackLevel: attackLevel, healthLevel: healthLevel });
+                menu = Boolean(0);
+                ref.scene.start("Menu" /*, { score: coinCount, attackLevel: attackLevel, healthLevel: healthLevel }*/);
             });
 
             // Settings Menu- commented out until further notice.
@@ -1124,6 +1134,17 @@ var createOnce = Boolean(0);
 // between scenes, it's not in the global variables.
 // It's already being passed directly between scenes.
 // CTRL-F "launch"
+
+// Scratch what I said above. Phaser is absolutely atrocious at passing
+// variables between scenes. Honestly one of the worst engines I've used
+// to fail to do something so simple. Here's the global fallback-
+var score = 0;
+var coinCount = 0;
+var attackLevel = 0;
+var healthLevel = 0;
+var menu = Boolean(0);
+var enemies;
+
 var swordList = [
     { a: "weapon_rusty_sword" },
     { a: "weapon_regular_sword" },
