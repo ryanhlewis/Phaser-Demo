@@ -147,7 +147,7 @@ class InGame extends Phaser.Scene {
         }*/
 
         var health = 100 + 50 * healthLevel;
-        var attack = 10 + 10 * attackLevel;
+        var attack = 3 + 5 * attackLevel;
 
         //cursors = this.input.keyboard.createCursorKeys();
         cursors = this.input.keyboard.addKeys({ up: Phaser.Input.Keyboard.KeyCodes.W, down: Phaser.Input.Keyboard.KeyCodes.S, left: Phaser.Input.Keyboard.KeyCodes.A, right: Phaser.Input.Keyboard.KeyCodes.D });
@@ -276,15 +276,15 @@ class InGame extends Phaser.Scene {
         //console.log(spawnerID);
 
         // Attempt to clear the intervals of everything--
-        for (let x = 0; x <= spawnerID; x++) {
+        for (let x = 0; x < spawnerID; x++) {
             clearInterval(x);
         }
 
         function updateEnemies() {
             // Normalize the score--
-            var normalizedScore = Math.round(score / 200);
-            //console.log(normalizedScore);
-            //console.log(lastScore);
+            var normalizedScore = Math.round(score / 50);
+            console.log(normalizedScore);
+            console.log(lastScore);
             // If next enemy unlocked--
             if (normalizedScore > lastScore) {
                 // Distribution is high for lower enemies, low for higher.
@@ -315,6 +315,8 @@ class InGame extends Phaser.Scene {
             enemy.setScale(enemyType.scale, enemyType.scale);
             enemy.anims.play(enemyType.animName);
             enemy.health = enemyType.health;
+            enemy.setData('isHit', Boolean(0));
+
             //enemy.setCollideWorldBounds(true);
         }
 
@@ -538,6 +540,10 @@ class InGame extends Phaser.Scene {
 
         async function hitEnemies(bodyA, bodyB) {
             if (overrideSword) {
+
+                // hit enemy
+                bodyB.setData('isHit', Boolean(1));
+
                 // Geometry- distance between points
                 var xDistance = bodyA.x - bodyB.x;
                 var yDistance = bodyA.y - bodyB.y;
@@ -556,7 +562,7 @@ class InGame extends Phaser.Scene {
                 bodyB.name += ".";
                 if (bodyB.health <= 0) {
                     // normalize this length by attackDamage
-                    var possibleCoins = bodyB.name.length / (attack / 10) / 2;
+                    var possibleCoins = bodyB.name.length / (attack) / 2;
                     console.log(possibleCoins);
                     var RNGcoins = Math.random() * possibleCoins + 1;
                     for (let x = 1; x < RNGcoins; x++) createCoin(bodyB.x, bodyB.y);
@@ -577,6 +583,7 @@ class InGame extends Phaser.Scene {
                                         bodyB.setVelocityX(0);
                                         bodyB.setVelocityY(0);
                                         bodyB.anims.resume();
+                                        bodyB.setData('isHit', Boolean(0));
                                     } catch (err) {
                                         //ignore
                                     }
@@ -743,15 +750,20 @@ class InGame extends Phaser.Scene {
         }
 
         enemies.children["entries"].forEach((enemy) => {
+            if(!enemy.getData('isHit')) {
             var xDistance = princess.x - enemy.x;
             var yDistance = princess.y - enemy.y;
             var hypotenuse = Math.sqrt(xDistance * xDistance + yDistance * yDistance);
             if (hypotenuse < 1000) {
                 //Speed determined by enemy health
-                enemy.y += 0.008 * (0.4 / (enemy.health / 100)) * 200 * (yDistance / hypotenuse);
-                enemy.x += 0.008 * (0.4 / (enemy.health / 100)) * 200 * (xDistance / hypotenuse);
+                // dont let the enemies go too fast if they get too low on health
+                var multiplier = enemy.health < 100 ? 100 : enemy.health;
+                enemy.y += 0.008 * (0.4 / (multiplier / 100)) * 200 * (yDistance / hypotenuse);
+                enemy.x += 0.008 * (0.4 / (multiplier / 100)) * 200 * (xDistance / hypotenuse);
             }
+        }
         });
+        
     }
 }
 
