@@ -147,7 +147,7 @@ class InGame extends Phaser.Scene {
         }*/
 
         var health = 100 + 50 * healthLevel;
-        var attack = 3 + 2 * attackLevel;
+        var attack = 25 + 3 * attackLevel;
 
         //cursors = this.input.keyboard.createCursorKeys();
         cursors = this.input.keyboard.addKeys({ up: Phaser.Input.Keyboard.KeyCodes.W, down: Phaser.Input.Keyboard.KeyCodes.S, left: Phaser.Input.Keyboard.KeyCodes.A, right: Phaser.Input.Keyboard.KeyCodes.D });
@@ -271,7 +271,7 @@ class InGame extends Phaser.Scene {
 
         // The more you've upgraded yourself in the Shop (attack-wise)
         // the harder your start will be...... (to keep things engaging)
-        var intervalMax = (attackLevel * 200) > 4500 ? 500 : attackLevel*100;
+        var intervalMax = (attackLevel * 200) > 4750 ? 4750 : attackLevel*100;
 
         // Add all previously levelled enemies---
         var maxEnemyCount = attackLevel >= EnemyList.length ? EnemyList.Length-1 : attackLevel;
@@ -281,8 +281,12 @@ class InGame extends Phaser.Scene {
 
         // Every five seconds, check player score,
         // and update current enemy list accordingly
+        spawnerID = setInterval(updateEnemies, 5000);
+
+        // The spawn time decreases as player levels up
         var intervalTime = 5000 - (intervalMax);
-        spawnerID = setInterval(updateEnemies, intervalTime);
+        var spawner = setInterval(createEnemy, intervalTime);
+
         //console.log(spawnerID);
 
         // Attempt to clear the intervals of everything--
@@ -365,8 +369,6 @@ class InGame extends Phaser.Scene {
             return pos;
         }
 
-        var spawner = setInterval(createEnemy, 5000);
-
         function deathScreen() {
             //console.log("player has died");
             player.setVelocityX(0);
@@ -375,6 +377,7 @@ class InGame extends Phaser.Scene {
             sword.setVelocityY(0);
             sword.x = player.x;
             sword.y = player.y;
+    
             player.anims.stop();
             player.setTexture("spritesheet", "knight_f_hit_anim_f0");
 
@@ -470,7 +473,11 @@ class InGame extends Phaser.Scene {
         }
 
         async function hitPrincess(bodyA, bodyB) {
-            if (gameEnded) return;
+            if (gameEnded || bodyB.getData('isHit')) return;
+
+
+            bodyB.setData('isHit', Boolean(1));
+
 
             var xDistance = princess.x - bodyB.x;
             var yDistance = princess.y - bodyB.y;
@@ -528,6 +535,7 @@ class InGame extends Phaser.Scene {
                                     bodyB.setVelocityX(0);
                                     bodyB.setVelocityY(0);
                                     bodyB.anims.resume();
+                                    bodyB.setData('isHit', Boolean(0));
                                 } catch (err) {
                                     //ignore
                                 }
@@ -549,7 +557,7 @@ class InGame extends Phaser.Scene {
         this.physics.add.collider(sword, enemies, hitEnemies, null, this);
 
         async function hitEnemies(bodyA, bodyB) {
-            if (overrideSword) {
+            if (overrideSword && !bodyB.getData('isHit')) {
 
                 // hit enemy
                 bodyB.setData('isHit', Boolean(1));
@@ -623,6 +631,7 @@ class InGame extends Phaser.Scene {
 
                 // Temporary sword trail
                 let trail = ref.add.sprite(sword.x, sword.y, "sword");
+                trail.tint = swordTrailColor;
                 trail.setScale(0.5, 0.5);
                 trail.anims.play("sword");
                 if (player.flipX) {
@@ -981,7 +990,7 @@ class Menu extends Phaser.Scene {
                 let chest = ref.add.sprite(ref.sys.game.config.width / 2, ref.sys.game.config.height / 2 - 170, "spritesheet", "chest_empty_open_anim_f0");
                 chest.setScale(7, 7);
 
-                var scoreText = ref.add.text(ref.sys.game.config.width / 2 - 40, ref.sys.game.config.height / 2 - 130, "" + coinCount, { fontFamily: "PublicPixel", fontSize: "30px", fill: "#fff", align: "center" });
+                var scoreText = ref.add.text(ref.sys.game.config.width / 2, ref.sys.game.config.height / 2 - 130, "" + coinCount, { fontFamily: "PublicPixel", fontSize: "30px", fill: "#fff", align: "center" }).setOrigin(0.5);
 
                 var swordLevel = ref.add.text(ref.sys.game.config.width / 2 - 110, ref.sys.game.config.height / 2 - 80, "Level " + attackLevel, { fontFamily: "PublicPixel", fontSize: "12px", fill: "#fff", align: "center" });
                 var heartLevel = ref.add.text(ref.sys.game.config.width / 2 + 20, ref.sys.game.config.height / 2 - 80, "Level " + healthLevel, { fontFamily: "PublicPixel", fontSize: "12px", fill: "#fff", align: "center" });
@@ -1017,6 +1026,8 @@ class Menu extends Phaser.Scene {
                         //console.log("bought!");
                         attackLevel++;
                         coinCount -= upgradeCost;
+                        // add new sword trail color
+                        swordTrailColor = Math.random() * 0xffffff;
                         // refresh the shop
                         deleteShop();
                         displayShop();
@@ -1166,6 +1177,7 @@ var attackLevel = 0;
 var healthLevel = 0;
 var menu = Boolean(0);
 var enemies;
+var swordTrailColor = 0xffffff;
 
 var swordList = [
     { a: "weapon_rusty_sword" },
