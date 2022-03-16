@@ -158,8 +158,9 @@ class InGame extends Phaser.Scene {
         // all enemies
         enemies = this.physics.add.group({
             dragX: 300,
-            dragY: 300,
+            dragY: 300
         });
+
 
         playerGroup = this.physics.add.group();
 
@@ -330,6 +331,8 @@ class InGame extends Phaser.Scene {
             enemy.anims.play(enemyType.animName);
             enemy.health = enemyType.health;
             enemy.setData('isHit', Boolean(0));
+            console.log(enemy);
+            enemy.body.immovable = true;
 
             //enemy.setCollideWorldBounds(true);
         }
